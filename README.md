@@ -96,17 +96,15 @@ The displayed test output in [`test_seg_model.py`](c:/Users/satya/Desktop/badmin
 
 Because of that, the live demo behavior and the benchmark value `76.64 ms/frame` should not be treated as exactly the same measurement. The benchmark value is the average model forward-pass time measured separately across the evaluation images.
 
-## Inference Output Screenshots
+## Test Output Screenshots
 
-
-### Inference Output
-
-![Inference Output Placeholder](<PASTE_GITHUB_IMAGE_LINK_HERE>)
 
 ### Test Result
 
-![Test Result Placeholder](<PASTE_GITHUB_IMAGE_LINK_HERE>)
+![Test Result Placeholder](https://raw.githubusercontent.com/SatyaTejaChukka/badmintion_segmentation/main/Screenshot_1.png)
+
+![Test Result Placeholder](https://raw.githubusercontent.com/SatyaTejaChukka/badmintion_segmentation/main/Screenshot_2.png)
 
 ### Test Video Result
 
-![Test Video Result Placeholder](<PASTE_GITHUB_IMAGE_LINK_HERE>)
+[Test Video Result](https://raw.githubusercontent.com/SatyaTejaChukka/badmintion_segmentation/main/Court_detection.mp4)
