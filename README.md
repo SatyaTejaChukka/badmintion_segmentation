@@ -98,12 +98,11 @@ Because of that, the live demo behavior and the benchmark value `76.64 ms/frame`
 
 ## Test Output Screenshots
 
+The two screenshots below are sample frames captured from the same output while running `test_seg_model.py`.
 
-### Test Result
+![Inference Output Frame 1](https://raw.githubusercontent.com/SatyaTejaChukka/badmintion_segmentation/main/Screenshot_1.png)
 
-![Test Result Placeholder](https://raw.githubusercontent.com/SatyaTejaChukka/badmintion_segmentation/main/Screenshot_1.png)
-
-![Test Result Placeholder](https://raw.githubusercontent.com/SatyaTejaChukka/badmintion_segmentation/main/Screenshot_2.png)
+![Inference Output Frame 2](https://raw.githubusercontent.com/SatyaTejaChukka/badmintion_segmentation/main/Screenshot_2.png)
 
 ### Test Video Result
 
