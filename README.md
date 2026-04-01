@@ -106,4 +106,6 @@ The two screenshots below are sample frames captured from the same output while 
 
 ### Test Video Result
 
-[Test Video Result](https://raw.githubusercontent.com/SatyaTejaChukka/badmintion_segmentation/main/Court_detection.mp4)
+Click the thumbnail below to open the test video result.
+
+[![Test Video Thumbnail](https://raw.githubusercontent.com/SatyaTejaChukka/badmintion_segmentation/main/Screenshot_1.png)](https://github.com/SatyaTejaChukka/badmintion_segmentation/blob/main/Court_detection.mp4)
