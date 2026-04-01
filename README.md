@@ -1,111 +1,99 @@
-# Model Benchmark
+# Court Segmentation Benchmark
 
-| Model | Little Explanation | Pixel Accuracy | Parameters | Weight Size (MB) | Avg Inference Time (ms/frame) |
-| --- | --- | --- | --- | --- | --- |
-| [`court_model.pth`](https://github.com/SatyaTejaChukka/badmintion_segmentation/blob/main/court_model.pth) | U-Net with a ResNet-18 encoder used to segment the badminton court area from each frame. | `99.48%` | `14.33M` | `54.76` | `76.64` |
+## Benchmark Setup
 
-## How Each Value Is Calculated
+- Architecture family: `U-Net`
+- Encoders tested: `ResNet-18`, `MobileNetV2`
+- Input resolutions tested: `256 x 256`, `192 x 192`, `128 x 128`
+- Dataset split used for all experiments: `150` training images and `37` validation images
+- Random seed: `42`
+- Training epochs: `8`
+- Encoder initialization: `ImageNet`
+- Loss function: `BCEWithLogitsLoss`
+- Evaluation device for inference timing: `CPU`
+- Pixel accuracy = correctly predicted mask pixels / total pixels in the validation set
+- Average inference time = average model forward-pass time per validation frame, measured with batch size `1` after a warm-up pass
 
-### Pixel Accuracy
+Saved experiment outputs:
 
-Pixel accuracy is computed by comparing the predicted binary mask with the ground-truth binary mask for every pixel in the evaluation set.
+- [summary.csv](experiments/results/summary.csv)
+- [summary.json](experiments/results/summary.json)
+- [model_comparison.csv](experiments/results/model_comparison.csv)
+- [model_comparison.json](experiments/results/model_comparison.json)
 
-Formula:
+## Model Comparison
 
-`Pixel Accuracy = Correctly Predicted Pixels / Total Pixels`
+| Model | Input Resolution | Little Explanation | Pixel Accuracy | Parameters | Weight Size (MB) | Avg Inference Time (ms/frame) | Best Epoch | Checkpoint |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| U-Net + ResNet-18 | `256 x 256` | Baseline U-Net with a ResNet-18 encoder. | `99.62%` | `14.33M` | `54.76` | `81.51` | `6` | [unet_resnet18_256.pth](experiments/checkpoints/unet_resnet18_256.pth) |
+| U-Net + MobileNetV2 | `256 x 256` | MobileNet-based U-Net trained at the same resolution as the baseline. | `99.66%` | `6.63M` | `25.54` | `59.78` | `7` | [unet_mobilenet_v2_256.pth](experiments/checkpoints/unet_mobilenet_v2_256.pth) |
+| U-Net + MobileNetV2 | `192 x 192` | Lower-resolution MobileNet experiment to reduce compute while preserving accuracy. | `99.64%` | `6.63M` | `25.54` | `35.31` | `8` | [unet_mobilenet_v2_192.pth](experiments/checkpoints/unet_mobilenet_v2_192.pth) |
+| U-Net + MobileNetV2 | `128 x 128` | Smallest tested resolution for maximum speed reduction. | `99.60%` | `6.63M` | `25.54` | `29.01` | `7` | [unet_mobilenet_v2_128.pth](experiments/checkpoints/unet_mobilenet_v2_128.pth) |
 
-Numbers used:
+## Key Findings
 
-- Correctly predicted pixels = `12,191,205`
-- Total pixels = `12,255,232`
-- Calculation = `12,191,205 / 12,255,232 = 0.994775537501`
-- Final value reported = `99.48%`
+- `U-Net + MobileNetV2 @ 256` achieved the best pixel accuracy among the tested models: `99.66%`.
+- Compared with `U-Net + ResNet-18 @ 256`, `U-Net + MobileNetV2 @ 256` used `53.74%` fewer parameters, produced a `53.36%` smaller checkpoint, and reduced average inference time by `26.66%`.
+- `U-Net + MobileNetV2 @ 192` stayed within `0.01` percentage points of the `256 x 256` MobileNet result while reducing average inference time by `40.93%`.
+- `U-Net + MobileNetV2 @ 128` was the fastest tested configuration at `29.01 ms/frame`, with a `0.06` percentage-point drop in pixel accuracy relative to `U-Net + MobileNetV2 @ 256`.
+- Parameter count and checkpoint size remain the same across MobileNet resolutions because the network architecture is unchanged; only the input size is reduced.
 
-The total pixel count comes from `187` evaluation images, each resized to `256 x 256`.
+## Practical Recommendation
 
-`187 x 256 x 256 = 12,255,232`
+- If maximum pixel accuracy is the priority, use `U-Net + MobileNetV2 @ 256`.
+- If the goal is the best balance between speed and accuracy, use `U-Net + MobileNetV2 @ 192`.
+- If minimum inference time is the priority, use `U-Net + MobileNetV2 @ 128`.
 
-### Parameters
+## Run Training
 
-Parameters are calculated as the total number of learnable values in the model.
+Use [`train_resolution_benchmarks.py`](train_resolution_benchmarks.py) to train and benchmark the models.
 
-Numbers used:
+Train the full benchmark set:
 
-- Total parameters = `14,328,209`
-- Final value reported = `14.33M`
+```bash
+python train_resolution_benchmarks.py
+```
 
-### Weight Size
+Train only the MobileNet resolution sweep used for this comparison:
 
-Weight size is the size of the saved checkpoint file on disk.
+```bash
+python train_resolution_benchmarks.py --epochs 8 --experiments mobilenet_v2:256 mobilenet_v2:192 mobilenet_v2:128
+```
 
-Formula:
+Train the ResNet-18 baseline explicitly:
 
-`Weight Size (MB) = File Size in Bytes / (1024 x 1024)`
+```bash
+python train_resolution_benchmarks.py --epochs 8 --experiments resnet18:256
+```
 
-Numbers used:
+Train a single model at a specific resolution:
 
-- Checkpoint file size = `57,422,531 bytes`
-- Calculation = `57,422,531 / 1,048,576 = 54.762393 MB`
-- Final value reported = `54.76 MB`
+```bash
+python train_resolution_benchmarks.py --epochs 8 --experiments mobilenet_v2:192
+```
 
-### Average Inference Time
+Useful options:
 
-Average inference time is measured by timing only the model forward pass for each evaluation image after resizing it to `256 x 256`, and then averaging that time over the full evaluation set.
+- `--epochs` to change the number of training epochs
+- `--batch-size` to change the training batch size
+- `--learning-rate` to change the optimizer learning rate
+- `--val-ratio` to change the validation split
+- `--output-dir` to save checkpoints and result files to a different folder
 
-Formula:
+The training script saves checkpoints to [`experiments/checkpoints`](experiments/checkpoints) and benchmark summaries to [`experiments/results`](experiments/results).
 
-`Average Inference Time = Total Forward-Pass Time / Number of Evaluated Frames`
+## Run Video Testing
 
-Numbers used:
+Use [`test_seg_model.py`](test_seg_model.py) to run the trained checkpoints on a video.
 
-- Total evaluated frames = `187`
-- Total forward-pass time = `14,332.11 ms`
-- Calculation = `14,332.11 / 187 = 76.64 ms/frame`
-- Final value reported = `76.64 ms/frame`
-- Device used for this measurement = `CPU`
+Example commands:
 
-This timing refers to the segmentation model prediction step only. It does not include file loading, display time, or GitHub screenshot rendering.
+```bash
+python test_seg_model.py --model-path experiments/checkpoints/unet_resnet18_256.pth --encoder-name resnet18 --image-size 256
 
-## What the Inference Output Shows
+python test_seg_model.py --model-path experiments/checkpoints/unet_mobilenet_v2_256.pth --encoder-name mobilenet_v2 --image-size 256
 
-The inference output shown by the test pipeline is the final visual result after prediction and post-processing.
+python test_seg_model.py --model-path experiments/checkpoints/unet_mobilenet_v2_192.pth --encoder-name mobilenet_v2 --image-size 192
 
-Step by step:
-
-1. A video frame is resized to `256 x 256` and passed into the model.
-2. The model predicts a single-channel mask for the court region.
-3. A sigmoid is applied to convert raw output logits into probabilities.
-4. A threshold of `0.5` is applied to convert the probability map into a binary mask.
-5. The binary mask is resized back to the original frame size.
-6. Morphological cleanup is applied to remove noise and fill small gaps.
-7. The largest valid court contour is selected from the cleaned mask.
-8. Four court corners are estimated from the contour and refined using fitted edge lines.
-9. The final frame is rendered with:
-
-- A green overlay showing the predicted court segmentation area
-- A red polygon showing the detected court boundary
-- Four labeled corner points: `TL`, `TR`, `BR`, `BL`
-
-## Important Note About Runtime Display
-
-The displayed test output in [`test_seg_model.py`](https://github.com/SatyaTejaChukka/badmintion_segmentation/blob/main/test_seg_model.py) is optimized for smoother viewing:
-
-- `SOURCE_FRAME_STRIDE = 2` means every second source frame is processed from the video.
-- `INFERENCE_FRAME_STRIDE = 4` means model inference is not run on every processed frame.
-- On skipped frames, the previous mask and corner estimate are reused.
-
-Because of that, the live demo behavior and the benchmark value `76.64 ms/frame` should not be treated as exactly the same measurement. The benchmark value is the average model forward-pass time measured separately across the evaluation images.
-
-## Test Output Screenshots
-
-The two screenshots below are sample frames captured from the same output while running `test_seg_model.py`.
-
-![Inference Output Frame 1](https://raw.githubusercontent.com/SatyaTejaChukka/badmintion_segmentation/main/Screenshot_1.png)
-
-![Inference Output Frame 2](https://raw.githubusercontent.com/SatyaTejaChukka/badmintion_segmentation/main/Screenshot_2.png)
-
-### Test Video Result
-
-Click the thumbnail below to open the test video result.
-
-[![Test Video Thumbnail](https://raw.githubusercontent.com/SatyaTejaChukka/badmintion_segmentation/main/Screenshot_1.png)](https://github.com/SatyaTejaChukka/badmintion_segmentation/blob/main/Court_detection.mp4)
+python test_seg_model.py --model-path experiments/checkpoints/unet_mobilenet_v2_128.pth --encoder-name mobilenet_v2 --image-size 128
+```

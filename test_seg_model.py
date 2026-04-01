@@ -1,3 +1,4 @@
+import argparse
 import cv2
 import torch
 import numpy as np
@@ -5,11 +6,12 @@ import segmentation_models_pytorch as smp
 import time
 
 
-MODEL_PATH = "court_model.pth"
-VIDEO_PATH = "IMG_2429[1].MOV"
-INFERENCE_SIZE = (256, 256)
-INFERENCE_FRAME_STRIDE = 4
-SOURCE_FRAME_STRIDE = 2
+DEFAULT_MODEL_PATH = "court_model.pth"
+DEFAULT_VIDEO_PATH = "IMG_2432[1].MOV"
+DEFAULT_ENCODER_NAME = "resnet18"
+DEFAULT_INFERENCE_SIZE = 256
+DEFAULT_INFERENCE_FRAME_STRIDE = 4
+DEFAULT_SOURCE_FRAME_STRIDE = 2
 CORNER_LABELS = ["TL", "TR", "BR", "BL"]
 CORNER_COLORS = [
     (0, 0, 255),
@@ -17,6 +19,17 @@ CORNER_COLORS = [
     (255, 0, 255),
     (255, 128, 0),
 ]
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Run court segmentation inference on a video.")
+    parser.add_argument("--model-path", default=DEFAULT_MODEL_PATH)
+    parser.add_argument("--video-path", default=DEFAULT_VIDEO_PATH)
+    parser.add_argument("--encoder-name", default=DEFAULT_ENCODER_NAME)
+    parser.add_argument("--image-size", type=int, default=DEFAULT_INFERENCE_SIZE)
+    parser.add_argument("--inference-frame-stride", type=int, default=DEFAULT_INFERENCE_FRAME_STRIDE)
+    parser.add_argument("--source-frame-stride", type=int, default=DEFAULT_SOURCE_FRAME_STRIDE)
+    return parser.parse_args()
 
 
 def resize_for_display(image, max_width=1280, max_height=720):
@@ -30,21 +43,21 @@ def resize_for_display(image, max_width=1280, max_height=720):
     return cv2.resize(image, new_size, interpolation=cv2.INTER_AREA)
 
 
-def build_model(device):
+def build_model(device, encoder_name, model_path):
     model = smp.Unet(
-        encoder_name="resnet18",
+        encoder_name=encoder_name,
         encoder_weights=None,
         in_channels=3,
         classes=1,
     )
-    model.load_state_dict(torch.load(MODEL_PATH, map_location=device))
+    model.load_state_dict(torch.load(model_path, map_location=device))
     model.to(device)
     model.eval()
     return model
 
 
-def preprocess_frame(frame, device):
-    img = cv2.resize(frame, INFERENCE_SIZE, interpolation=cv2.INTER_AREA)
+def preprocess_frame(frame, device, image_size):
+    img = cv2.resize(frame, (image_size, image_size), interpolation=cv2.INTER_AREA)
     img = img.astype(np.float32) / 255.0
     img = np.transpose(img, (2, 0, 1))
     img = np.ascontiguousarray(np.expand_dims(img, axis=0))
@@ -220,13 +233,18 @@ def draw_corners(frame, corners):
 
 
 def main():
+    args = parse_args()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = build_model(device)
+    model = build_model(
+        device=device,
+        encoder_name=args.encoder_name,
+        model_path=args.model_path,
+    )
 
-    cap = cv2.VideoCapture(VIDEO_PATH)
+    cap = cv2.VideoCapture(args.video_path)
     cv2.namedWindow("Court Detection", cv2.WINDOW_NORMAL)
     video_fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
-    target_frame_time = SOURCE_FRAME_STRIDE / max(video_fps, 1.0)
+    target_frame_time = args.source_frame_stride / max(video_fps, 1.0)
 
     previous_corners = None
     previous_mask = None
@@ -238,10 +256,10 @@ def main():
         if not ret:
             break
 
-        run_inference = previous_mask is None or frame_index % INFERENCE_FRAME_STRIDE == 0
+        run_inference = previous_mask is None or frame_index % args.inference_frame_stride == 0
 
         if run_inference:
-            img = preprocess_frame(frame, device)
+            img = preprocess_frame(frame, device, args.image_size)
 
             with torch.inference_mode():
                 pred = model(img)
@@ -273,7 +291,7 @@ def main():
         if cv2.waitKey(wait_ms) & 0xFF == 27:
             break
 
-        for _ in range(SOURCE_FRAME_STRIDE - 1):
+        for _ in range(args.source_frame_stride - 1):
             if not cap.grab():
                 ret = False
                 break

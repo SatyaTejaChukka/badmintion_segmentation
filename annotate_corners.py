@@ -40,7 +40,6 @@ CORNER_COLORS = [
     (0, 255, 255),  # Yellow - BL
 ]
 
-
 class CornerAnnotator:
     def __init__(self, video_path: str, output_path: Optional[str] = None,
                  skip_frames: int = 1, resume_path: Optional[str] = None):
